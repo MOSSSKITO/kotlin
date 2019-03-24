@@ -1,0 +1,4 @@
+enum class MyEnum {
+    HELLO,
+    WORLD
+}

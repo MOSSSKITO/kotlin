@@ -65,6 +65,7 @@ import org.jetbrains.kotlin.idea.stubindex.KotlinSourceFilterScope
 import org.jetbrains.kotlin.idea.util.ProjectRootsUtil
 import org.jetbrains.kotlin.idea.util.compat.psiSearchHelperInstance
 import org.jetbrains.kotlin.idea.util.hasActualsFor
+import org.jetbrains.kotlin.js.resolve.diagnostics.findPsi
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.*
@@ -302,6 +303,11 @@ class UnusedSymbolInspection : AbstractKotlinInspection() {
                 hasPlatformImplementations(declaration, descriptor)
     }
 
+    private fun checkDeclaration(declaration: KtNamedDeclaration, importedDeclaration: KtNamedDeclaration): Boolean =
+        declaration !in importedDeclaration.parentsWithSelf && !hasNonTrivialUsages(importedDeclaration)
+
+    private val KtNamedDeclaration.isObjectOrEnum: Boolean get() = this is KtObjectDeclaration || this is KtClass && isEnum()
+
     private fun hasReferences(
         declaration: KtNamedDeclaration,
         descriptor: DeclarationDescriptor?,
@@ -319,7 +325,8 @@ class UnusedSymbolInspection : AbstractKotlinInspection() {
                     return false
                 }
                 // check if we import member(s) from object / nested object / enum and search for their usages
-                if (declaration is KtClassOrObject) {
+                val originalDeclaration = (descriptor as? TypeAliasDescriptor)?.classDescriptor?.findPsi() as? KtNamedDeclaration
+                if (declaration is KtClassOrObject || originalDeclaration is KtClassOrObject) {
                     if (import.isAllUnder) {
                         val importedFrom = import.importedReference?.getQualifiedElementSelector()?.mainReference?.resolve()
                                 as? KtClassOrObject ?: return true
@@ -329,12 +336,18 @@ class UnusedSymbolInspection : AbstractKotlinInspection() {
                             val importedDeclaration =
                                 import.importedReference?.getQualifiedElementSelector()?.mainReference?.resolve() as? KtNamedDeclaration
                                     ?: return true
-                            if (declaration is KtObjectDeclaration ||
-                                (declaration is KtClass && declaration.isEnum()) ||
-                                importedDeclaration.containingClassOrObject is KtObjectDeclaration
-                            ) {
-                                return declaration !in importedDeclaration.parentsWithSelf && !hasNonTrivialUsages(importedDeclaration)
-                            }
+                            // check type alias
+                            if (importedDeclaration.fqName == declaration.fqName) return true
+
+                            if (declaration.isObjectOrEnum || importedDeclaration.containingClassOrObject is KtObjectDeclaration) return checkDeclaration(
+                                declaration,
+                                importedDeclaration
+                            )
+
+                            if (originalDeclaration?.isObjectOrEnum == true) return checkDeclaration(
+                                originalDeclaration,
+                                importedDeclaration
+                            )
                         }
                     }
                 }
@@ -481,6 +494,10 @@ class SafeDeleteFix(declaration: KtDeclaration) : LocalQuickFix {
         if (declaration is KtParameter && declaration.parent is KtParameterList && declaration.parent?.parent is KtFunction) {
             RemoveUnusedFunctionParameterFix(declaration).invoke(project, declaration.findExistingEditor(), declaration.containingKtFile)
         } else {
+            if (ApplicationManager.getApplication().isUnitTestMode) {
+                SafeDeleteHandler.invoke(project, arrayOf(declaration), false)
+                return
+            }
             ApplicationManager.getApplication().invokeLater(
                 { SafeDeleteHandler.invoke(project, arrayOf(declaration), false) },
                 ModalityState.NON_MODAL
