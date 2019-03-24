@@ -8658,6 +8658,16 @@ public class LocalInspectionTestGenerated extends AbstractLocalInspectionTest {
             runTest("idea/testData/inspectionsLocal/unusedSymbol/companionViaImport.kt");
         }
 
+        @TestMetadata("companionViaImport2.kt")
+        public void testCompanionViaImport2() throws Exception {
+            runTest("idea/testData/inspectionsLocal/unusedSymbol/companionViaImport2.kt");
+        }
+
+        @TestMetadata("companionViaImport3.kt")
+        public void testCompanionViaImport3() throws Exception {
+            runTest("idea/testData/inspectionsLocal/unusedSymbol/companionViaImport3.kt");
+        }
+
         @TestMetadata("dataInlineClassDeclaration.kt")
         public void testDataInlineClassDeclaration() throws Exception {
             runTest("idea/testData/inspectionsLocal/unusedSymbol/dataInlineClassDeclaration.kt");
@@ -8696,6 +8706,11 @@ public class LocalInspectionTestGenerated extends AbstractLocalInspectionTest {
         @TestMetadata("inlineClassMemberFunction.kt")
         public void testInlineClassMemberFunction() throws Exception {
             runTest("idea/testData/inspectionsLocal/unusedSymbol/inlineClassMemberFunction.kt");
+        }
+
+        @TestMetadata("innerClass.kt")
+        public void testInnerClass() throws Exception {
+            runTest("idea/testData/inspectionsLocal/unusedSymbol/innerClass.kt");
         }
 
         @TestMetadata("internal.kt")
